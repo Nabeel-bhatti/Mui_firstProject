@@ -1,5 +1,3 @@
-//Add new Athletes
-
 import {
   Box,
   Paper,
@@ -10,145 +8,282 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControl,
+  FormLabel,
+  TextField,
+  // Autocomplete,
+  // Stack,
+  Snackbar,
+  Slide,
+  Alert,
 } from "@mui/material";
-import { FormControl, FormLabel } from "@mui/joy";
-
-import { DataGrid } from "@mui/x-data-grid";
+import * as yup from "yup";
+import { useNavigate } from "react-router-dom";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import React, { useEffect, useState } from "react";
-import { EditNote } from "@mui/icons-material";
+import { EditNote, Warning, DoneAll, Delete } from "@mui/icons-material";
+import {
+  createGender,
+  editGender,
+  getGendersData,
+  deleteGender,
+} from "../Services/GetServices";
 
-function Gender() {
+function Genders() {
+  const [rows, setRows] = useState([]);
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
-    pageSize: 10,
+    pageSize: 5,
   });
+
   const [rowCount, setRowCount] = useState(0);
   const [sortModel, setSortModel] = useState([]);
-  const [rows, setRows] = useState([]);
-  const [genders, setGenders] = useState([]);
   const [filterModel, setFilterModel] = useState({ items: [] });
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [dialog2Open, setDialog2Open] = useState(false);
-
+  const [snackOpen, setSnackOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [severity, setSeverity] = useState("");
   const [newData, setNewData] = useState({
     name: "",
-    gender_id: 1,
   });
 
+  const [selectedRow, setSelectedRow] = useState({
+    name: null,
+  });
+
+  const genders_validation = yup.object().shape({
+    name: yup.string().required(),
+  });
+
+  let navigate = useNavigate();
+
+  function SlideTransition(props) {
+    return <Slide {...props} direction="left" />;
+  }
+
+  const handleSuccess = (message) => {
+    setSeverity("success");
+    setMessage(message);
+    setTimeout(() => setSnackOpen(true), 2000);
+  };
+  const handleError = (message) => {
+    setSeverity("error");
+    setMessage(message);
+    setTimeout(() => setSnackOpen(true), 2000);
+  };
+
   useEffect(() => {
-    const fetchAthleteData = async () => {
+    const gendersData = async () => {
       try {
-        const token = JSON.parse(localStorage.getItem("Bdata"))?.data?.token;
-        const response = await fetch(
-          `http://127.0.0.1:8000/api/v1/athletes?page=${paginationModel.page + 1}&page_size=${paginationModel.pageSize}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
+        const payloads = new URLSearchParams({
+          page: paginationModel.page + 1,
+          page_size: paginationModel.pageSize,
+        });
+
+        filterModel.items.forEach((filter, index) => {
+          if (filter.field && filter.operator && filter.value) {
+            payloads.append(`filter[${index}][field]`, filter.field);
+            payloads.append(`filter[${index}][operator]`, filter.operator);
+            payloads.append(`filter[${index}][value]`, filter.value);
           }
-        );
+        });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
+        sortModel.forEach((sort, index) => {
+          if (sort.field && sort.sort) {
+            payloads.append(`sort[${index}][field]`, sort.field);
+            payloads.append(`sort[${index}][sort]`, sort.sort);
+          }
+        });
+        const resp = await getGendersData(payloads.toString());
+        const result = resp.data;
+        console.log(result.data.data);
 
-        const result = await response.json();
-        const data = result.data;
-
-        setRowCount(data.total);
+        setRowCount(result.data.total);
+        // handleSuccess(result.message);
         setRows(
-          data.data.map((item) => ({
+          result.data.data.map((item) => ({
             id: item.id,
             name: item.name,
-            gender: item.gender.name,
-            gender_id: item.gender.id,
           }))
         );
+        console.log(result.message);
+
+        if (resp.status === 101) {
+          handleSuccess(result.message);
+        }
+        if (resp.status === 200) {
+          handleSuccess(result.message);
+          setLoading(true);
+        }
       } catch (error) {
-        console.error("Error fetching athletes data:", error);
+        const status = error.response?.status;
+        const errorMessage = error.response?.data?.message;
+        // const errorDetails = error.response?.data?.errors;
+
+        if (status === 401 || status === 405) {
+          alert(errorMessage);
+          navigate("/login");
+        } else if ([400, 403, 404, 414, 422, 500, 503].includes(status)) {
+          handleError(errorMessage);
+        } else {
+          console.error("Error fetching genders data:", error);
+          alert("An error occurred while fetching data.");
+        }
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchAthleteData();
-  }, [paginationModel, sortModel, filterModel]);
+    gendersData();
+  }, [paginationModel, sortModel, filterModel, navigate]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setNewData((prev) => ({ ...prev, [id]: value }));
+    setFieldErrors((prev) => ({ ...prev, [id]: "" }));
   };
-  // console.log(newData);
 
-  async function handleNewEdit() {
+  const handleNewSave = async (data) => {
+    console.log("my data", data);
     try {
-      const token = JSON.parse(localStorage.getItem("Bdata"))?.data?.token;
+      await genders_validation.validate(data, { abortEarly: false });
+      setFieldErrors({});
 
-      const resp = await fetch(
-        `http://127.0.0.1:8000/api/v1/genders?page=1&page_size=10`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-        }
-      );
-      if (!resp.ok) {
-        throw new Error("Failed to get GenderData");
-      }
+      const resp = await createGender(data);
+      const result = resp.data;
 
-      const gData = await resp.json();
-      setGenders(gData.data);
-      // console.log(genders.data[0].id);
-
-      setDialog2Open(true);
-    } catch (error) {
-      console.error("Error fetching gender data:", error);
-    }
-  }
-
-  async function handleNewSave(data) {
-    // console.log("my data", data);
-    try {
-      const token = JSON.parse(localStorage.getItem("Bdata"))?.data?.token;
-      const resp = await fetch(`http://127.0.0.1:8000/api/v1/athletes`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          name: data.name,
-          gender_id: data.gender_id,
-        }),
-      });
-      if (!resp.ok) {
-        throw new Error("Failed to update RowData");
-      }
+      handleSuccess(result.message);
 
       setPaginationModel((prev) => ({ ...prev }));
+      setNewData({ name: "" });
       setDialog2Open(false);
     } catch (error) {
-      console.error("Error saving RowData:", error);
+      const status = error.response?.status;
+      const errorMessage = error.response?.data?.message;
+      const errorDetails = error.response?.data?.errors;
+
+      if (status === 422) {
+        const backendErrors = {};
+        for (const field in errorDetails) {
+          backendErrors[field] = errorDetails[field].join("\n");
+        }
+        handleError(errorMessage);
+        setFieldErrors(backendErrors);
+        return;
+      }
+
+      if ([500 || 503].includes(status)) {
+        alert(errorMessage);
+        return;
+      }
+      if (status === 400) {
+        handleError(errorMessage);
+      }
+      if (error instanceof yup.ValidationError) {
+        const errors = {};
+        error.inner.forEach((err) => {
+          errors[err.path] = err.message;
+        });
+        setFieldErrors(errors);
+      } else {
+        console.error("Error saving NewGender:", error);
+      }
     }
-  }
+    return;
+  };
+
+  const handleSave = async (row) => {
+    try {
+      await genders_validation.validate(row, { abortEarly: false });
+      setFieldErrors({});
+
+      const resp = await editGender(row);
+      const result = resp.data;
+
+      handleSuccess(result.message);
+
+      setPaginationModel((prev) => ({ ...prev }));
+      setDialogOpen(false);
+    } catch (error) {
+      const status = error.response?.status;
+      const errorMessage = error.response?.data?.message;
+      const errorDetails = error.response?.data?.errors;
+
+      if (status === 401) {
+        alert(errorMessage);
+        navigate("/login");
+        return;
+      }
+      if (status === 422) {
+        const backendErrors = {};
+        for (const field in errorDetails) {
+          backendErrors[field] = errorDetails[field].join("\n");
+        }
+        handleError(errorMessage);
+        setFieldErrors(backendErrors);
+        return;
+      }
+      if ([500 || 503].includes(status)) {
+        alert(errorMessage);
+        return;
+      }
+
+      if (error instanceof yup.ValidationError) {
+        const errors = {};
+        error.inner.forEach((err) => {
+          errors[err.path] = err.message;
+        });
+        setFieldErrors(errors);
+      } else {
+        console.error("Error updating RowData:", error);
+      }
+    }
+    return;
+  };
+  const handleDelete = async (row) => {
+    try {
+      const resp = await deleteGender(row);
+      const result = resp.data;
+
+      handleSuccess(result.message);
+
+      setPaginationModel((prev) => ({ ...prev }));
+      setDialogOpen(false);
+    } catch (error) {
+      const status = error.response?.status;
+      const errorMessage = error.response?.data?.message;
+      // const errorDetails = error.response?.data?.errors;
+
+      if (status === 401) {
+        alert(errorMessage);
+        navigate("/login");
+        return;
+      }
+      if ([500, 503, 422].includes(status)) {
+        alert(errorMessage);
+        return;
+      } else {
+        console.error("Error occur in Deleting Gender:", error);
+      }
+    }
+    return;
+  };
 
   const handleDialogClose = () => {
     setDialog2Open(false);
-    setNewData({ name: "", gender_id: "" });
+    setDialogOpen(false);
+    setFieldErrors({});
+    setNewData({ name: "" });
+    setSelectedRow({ name: null });
   };
 
   const columns = [
     { field: "id", headerName: "Sr#", width: 150 },
-    { field: "name", headerName: "Athlete Name", width: 300 },
-    {
-      field: "gender",
-      headerName: "Gender",
-      width: 300,
-    },
+    { field: "name", headerName: "Gender", width: 300 },
+
     {
       field: "action",
       headerName: "Action",
@@ -157,7 +292,10 @@ function Gender() {
         <Button
           sx={{ backgroundColor: "#6e39cb", textAlign: "center" }}
           variant="contained"
-          onClick={() => handleNewEdit(params.row)}
+          onClick={() => {
+            setSelectedRow(params.row);
+            setDialogOpen(true);
+          }}
         >
           <EditNote />
         </Button>
@@ -166,7 +304,12 @@ function Gender() {
   ];
 
   return (
-    <Paper sx={{ pb: 1, m: 4 }}>
+    <Paper
+      sx={{
+        pb: 1,
+        m: 4,
+      }}
+    >
       <Box
         sx={{
           display: "flex",
@@ -176,18 +319,21 @@ function Gender() {
         }}
       >
         <Typography variant="h5" sx={{ color: "#6e39cb" }}>
-          Athlete Data
+          Gender Data
         </Typography>
         <Button
-          onClick={() => handleNewEdit()}
+          onClick={() => setDialog2Open(true)}
           sx={{ backgroundColor: "#6e39cb", color: "#fff" }}
         >
-          + ADD NEW ATHLETE
+          + ADD NEW GENDER
         </Button>
       </Box>
+
       <DataGrid
+        slots={{ toolbar: GridToolbar }}
         columns={columns}
         rows={rows}
+        loading={loading}
         rowCount={rowCount}
         pagination
         paginationMode="server"
@@ -200,44 +346,65 @@ function Gender() {
         onFilterModelChange={setFilterModel}
       />
 
+      <Dialog open={dialogOpen} onClose={handleDialogClose}>
+        <DialogTitle component={"h4"}>Update Record</DialogTitle>
+        <DialogContent>
+          {selectedRow ? (
+            <div>
+              <FormControl>
+                <FormLabel>Name *</FormLabel>
+                <TextField
+                  sx={{ minWidth: 500, mb: 3 }}
+                  defaultValue={selectedRow.name || ""}
+                  onChange={(e) =>
+                    setSelectedRow((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  error={!!fieldErrors.name}
+                  helperText={fieldErrors.name}
+                />
+              </FormControl>
+            </div>
+          ) : (
+            <Input>No data selected</Input>
+          )}
+        </DialogContent>
+
+        <DialogActions
+          sx={{ display: "flex", justifyContent: "space-between" }}
+        >
+          <Button
+            onClick={() => handleDelete(selectedRow)}
+            color="error"
+            startIcon={<Delete />}
+          >
+            Delete
+          </Button>
+          <Box>
+            <Button onClick={handleDialogClose} color="primary">
+              Cancel
+            </Button>
+            <Button onClick={() => handleSave(selectedRow)} color="primary">
+              Update
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
       <Dialog open={dialog2Open} onClose={handleDialogClose}>
-        <DialogTitle>Add Athlete</DialogTitle>
+        <DialogTitle>Add Gender</DialogTitle>
         <DialogContent>
           <FormControl>
             <FormLabel>Name *</FormLabel>
-            <Input
+            <TextField
               sx={{ minWidth: 500, mb: 3 }}
               value={newData.name}
               id="name"
+              error={!!fieldErrors.name}
+              helperText={fieldErrors.name}
               onChange={handleChange}
             />
-          </FormControl>
-          <FormControl>
-            <FormLabel>Gender *</FormLabel>
-            <select
-              style={{
-                width: "40%",
-                minHeight: 36,
-                border: "none",
-                minWidth: 500,
-                marginBottom: 18,
-              }}
-              id="gender_id"
-              // defaultValue={newData.gender}
-              value={newData.gender_id.name}
-              defaultValue={newData.gender_id.name}
-              onChange={handleChange}
-            >
-              {genders?.data?.length > 0 ? (
-                genders.data.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))
-              ) : (
-                <option disabled>Loading...</option>
-              )}
-            </select>
           </FormControl>
         </DialogContent>
         <DialogActions>
@@ -249,278 +416,40 @@ function Gender() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackOpen}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        TransitionComponent={SlideTransition}
+        key="slide-transition"
+        autoHideDuration={3000}
+        onClose={() => setSnackOpen(false)}
+      >
+        <Alert
+          severity={severity}
+          variant="filled"
+          sx={{
+            width: "100%",
+            backgroundColor: severity === "success" ? "#f1f1f1" : "#fff",
+            color: severity === "success" ? "#28a745" : "GrayText",
+          }}
+          icon={
+            severity === "success" ? (
+              <span style={{ color: "#28a745" }}>
+                <DoneAll />
+              </span>
+            ) : (
+              <span style={{ color: "#f1c40f" }}>
+                <Warning />
+              </span>
+            )
+          }
+        >
+          {message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 }
 
-export default Gender;
-
-// Edit Athletes
-
-// import {
-//   Box,
-//   Paper,
-//   Input,
-//   Typography,
-//   Button,
-//   Dialog,
-//   DialogTitle,
-//   DialogContent,
-//   DialogActions,
-// } from "@mui/material";
-// import { FormControl, FormLabel } from "@mui/joy";
-// import { DataGrid } from "@mui/x-data-grid";
-// import React, { useEffect, useState } from "react";
-// import { EditNote } from "@mui/icons-material";
-
-// function Athletes() {
-//   const [genders, setGenders] = useState([]);
-//   const [rows, setRows] = useState([]);
-//   const [paginationModel, setPaginationModel] = useState({
-//     page: 0,
-//     pageSize: 10,
-//   });
-//   const [rowCount, setRowCount] = useState(0);
-//   const [sortModel, setSortModel] = useState([]);
-//   const [filterModel, setFilterModel] = useState({ items: [] });
-//   const [dialogOpen, setDialogOpen] = useState(false);
-//   const [selectedRow, setSelectedRow] = useState({
-//     name: null,
-//     gender_id: null,
-//   });
-
-//   useEffect(() => {
-//     const athleteData = async () => {
-//       try {
-//         const token = JSON.parse(localStorage.getItem("Bdata"))?.data?.token;
-//         const response = await fetch(
-//           `http://127.0.0.1:8000/api/v1/athletes?page=${paginationModel.page + 1}&page_size=${paginationModel.pageSize}`,
-//           {
-//             method: "GET",
-//             headers: {
-//               Authorization: `Bearer ${token}`,
-//               "Content-Type": "application/json",
-//               Accept: "application/json",
-//             },
-//           }
-//         );
-
-//         if (!response.ok) {
-//           throw new Error(`HTTP error! Status: ${response.status}`);
-//         }
-
-//         const result = await response.json();
-//         const data = result.data;
-
-//         setRowCount(data.total);
-//         console.log(data.total);
-//         setRows(
-//           data.data.map((item) => ({
-//             id: item.id,
-//             name: item.name,
-//             gender: item.gender.name,
-//             gender_id: item.gender.id,
-//           }))
-//         );
-//       } catch (error) {
-//         console.error("Error fetching athletes data:", error);
-//       }
-//     };
-
-//     athleteData();
-//   }, [paginationModel, sortModel, filterModel]);
-
-//   async function handleEdit(rowData) {
-//     try {
-//       const token = JSON.parse(localStorage.getItem("Bdata"))?.data?.token;
-
-//       const resp = await fetch(
-//         `http://127.0.0.1:8000/api/v1/genders?page=1&page_size=10`,
-//         {
-//           method: "GET",
-//           headers: {
-//             Authorization: `Bearer ${token}`,
-//             "Content-Type": "application/json",
-//             Accept: "application/json",
-//           },
-//         }
-//       );
-//       if (!resp.ok) {
-//         throw new Error("Failed to get GenderData");
-//       }
-
-//       const gData = await resp.json();
-//       setGenders(gData.data);
-//       setSelectedRow({
-//         id: rowData.id,
-//         name: rowData.name,
-//         gender_id: rowData.gender_id,
-//       });
-//       setDialogOpen(true);
-//       console.log(gData.data.data);
-//     } catch (error) {}
-//   }
-
-//   async function handleSave(row) {
-//     console.log(row);
-//     try {
-//       const token = JSON.parse(localStorage.getItem("Bdata"))?.data?.token;
-//       const resp = await fetch(
-//         `http://127.0.0.1:8000/api/v1/athletes/${row.id}`,
-//         {
-//           method: "PATCH",
-//           headers: {
-//             Authorization: `Bearer ${token}`,
-//             "Content-Type": "application/json",
-//             Accept: "application/json",
-//           },
-//           body: JSON.stringify({
-//             name: row.name,
-//             gender_id: row.gender_id,
-//           }),
-//         }
-//       );
-//       if (!resp.ok) {
-//         throw new Error("Failed to update RowData");
-//       }
-
-//       const rData = await resp.json();
-//       console.log("RowData updated:", rData);
-
-//       setDialogOpen(false);
-//       setPaginationModel((prev) => ({ ...prev }));
-//     } catch (error) {
-//       console.error("Error saving RowData:", error);
-//     }
-//   }
-
-//   const handleDialogClose = () => {
-//     setDialogOpen(false);
-//   };
-
-//   const columns = [
-//     { field: "id", headerName: "Sr#", width: 150 },
-//     { field: "name", headerName: "Athlete Name", width: 300 },
-//     {
-//       field: "gender",
-//       headerName: "Gender",
-//       width: 300,
-//     },
-//     {
-//       field: "action",
-//       headerName: "Action",
-//       width: 300,
-//       renderCell: (params) => (
-//         <Button
-//           sx={{ backgroundColor: "#6e39cb", textAlign: "center" }}
-//           variant="contained"
-//           onClick={() => handleEdit(params.row)}
-//         >
-//           <EditNote />
-//         </Button>
-//       ),
-//     },
-//   ];
-//   console.log("Row Data", selectedRow);
-//   return (
-//     <Paper sx={{ pb: 1, m: 4 }}>
-//       <Box
-//         sx={{
-//           display: "flex",
-//           justifyContent: "space-between",
-//           alignItems: "center",
-//           p: 3,
-//         }}
-//       >
-//         <Typography variant="h5" sx={{ color: "#6e39cb" }}>
-//           Athlete Data
-//         </Typography>
-//         <Button
-//         //   onClick={() => handleEdit()}
-//           sx={{ backgroundColor: "#6e39cb", color: "#fff" }}
-//         >
-//           + ADD NEW ATHLETE
-//         </Button>
-//       </Box>
-//       <DataGrid
-//         columns={columns}
-//         rows={rows}
-//         rowCount={rowCount}
-//         pagination
-//         paginationMode="server"
-//         sortingMode="server"
-//         filterMode="server"
-//         pageSizeOptions={[3, 5, 10]}
-//         paginationModel={paginationModel}
-//         onPaginationModelChange={setPaginationModel}
-//         onSortModelChange={setSortModel}
-//         onFilterModelChange={setFilterModel}
-//       />
-
-//       <Dialog open={dialogOpen} onClose={handleDialogClose}>
-//         <DialogTitle component={"h4"}>Update Athlete</DialogTitle>
-//         <DialogContent>
-//           {selectedRow ? (
-//             <div>
-//               <FormControl>
-//                 <FormLabel>Name *</FormLabel>
-//                 <Input
-//                   sx={{ minWidth: 500, mb: 3 }}
-//                   defaultValue={selectedRow.name}
-//                   onChange={(e) =>
-//                     setSelectedRow((prev) => ({
-//                       ...prev,
-//                       name: e.target.value,
-//                     }))
-//                   }
-//                 />
-//               </FormControl>
-//               <FormControl>
-//                 <FormLabel>Gender *</FormLabel>
-//                 <select
-//                   fullWidth
-//                   style={{
-//                     width: "40%",
-//                     minHeight: 36,
-//                     border: "none",
-//                     minWidth: 500,
-//                     marginBottom: 18,
-//                   }}
-//                   value={selectedRow.gender_id}
-//                   onChange={(e) =>
-//                     setSelectedRow((prev) => ({
-//                       ...prev,
-//                       gender_id: e.target.value,
-//                     }))
-//                   }
-//                 >
-//                   {genders?.data?.length > 0 ? (
-//                     genders.data.map((item) => (
-//                       <option key={item.id} value={item.id}>
-//                         {item.name}
-//                       </option>
-//                     ))
-//                   ) : (
-//                     <option disabled>Loading...</option>
-//                   )}
-//                 </select>
-//               </FormControl>
-//             </div>
-//           ) : (
-//             <Input>No data selected</Input>
-//           )}
-//         </DialogContent>
-//         <DialogActions>
-//           <Button onClick={handleDialogClose} color="primary">
-//             Cancel
-//           </Button>
-//           <Button onClick={() => handleSave(selectedRow)} color="primary">
-//             Save
-//           </Button>
-//         </DialogActions>
-//       </Dialog>
-//     </Paper>
-//   );
-// }
-
-// export default Athletes;
+export default Genders;
