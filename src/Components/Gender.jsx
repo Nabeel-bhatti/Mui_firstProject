@@ -3,6 +3,7 @@ import {
   Paper,
   Input,
   Typography,
+  Container,
   Button,
   Dialog,
   DialogTitle,
@@ -11,23 +12,19 @@ import {
   FormControl,
   FormLabel,
   TextField,
-  // Autocomplete,
-  // Stack,
-  Snackbar,
-  Slide,
-  Alert,
 } from "@mui/material";
 import * as yup from "yup";
 import { useNavigate } from "react-router-dom";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import React, { useEffect, useState } from "react";
-import { EditNote, Warning, DoneAll, Delete } from "@mui/icons-material";
+import { EditNote, Delete } from "@mui/icons-material";
 import {
   createGender,
   editGender,
   getGendersData,
   deleteGender,
 } from "../Services/GetServices";
+import SnackbarComp from "./Snackbar_handler";
 
 function Genders() {
   const [rows, setRows] = useState([]);
@@ -41,11 +38,13 @@ function Genders() {
   const [filterModel, setFilterModel] = useState({ items: [] });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialog2Open, setDialog2Open] = useState(false);
-  const [snackOpen, setSnackOpen] = useState(false);
+  const [snack, setSnack] = useState({
+    open: false,
+    message: "",
+    severity: "",
+  });
   const [fieldErrors, setFieldErrors] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [severity, setSeverity] = useState("");
   const [newData, setNewData] = useState({
     name: "",
   });
@@ -60,19 +59,11 @@ function Genders() {
 
   let navigate = useNavigate();
 
-  function SlideTransition(props) {
-    return <Slide {...props} direction="left" />;
-  }
-
-  const handleSuccess = (message) => {
-    setSeverity("success");
-    setMessage(message);
-    setTimeout(() => setSnackOpen(true), 2000);
+  const showSnack = (message, severity) => {
+    setSnack({ open: true, message, severity });
   };
-  const handleError = (message) => {
-    setSeverity("error");
-    setMessage(message);
-    setTimeout(() => setSnackOpen(true), 2000);
+  const handleClose = () => {
+    setSnack((...prev) => ({ ...prev, open: false, severity: "" }));
   };
 
   useEffect(() => {
@@ -102,7 +93,7 @@ function Genders() {
         console.log(result.data.data);
 
         setRowCount(result.data.total);
-        // handleSuccess(result.message);
+        // showSnack(result.message,"success");
         setRows(
           result.data.data.map((item) => ({
             id: item.id,
@@ -112,10 +103,10 @@ function Genders() {
         console.log(result.message);
 
         if (resp.status === 101) {
-          handleSuccess(result.message);
+          showSnack(result.message, "success");
         }
         if (resp.status === 200) {
-          handleSuccess(result.message);
+          // showSnack(result.message,"success");
           setLoading(true);
         }
       } catch (error) {
@@ -127,7 +118,7 @@ function Genders() {
           alert(errorMessage);
           navigate("/login");
         } else if ([400, 403, 404, 414, 422, 500, 503].includes(status)) {
-          handleError(errorMessage);
+          showSnack(errorMessage, "error");
         } else {
           console.error("Error fetching genders data:", error);
           alert("An error occurred while fetching data.");
@@ -155,7 +146,7 @@ function Genders() {
       const resp = await createGender(data);
       const result = resp.data;
 
-      handleSuccess(result.message);
+      showSnack(result.message, "success");
 
       setPaginationModel((prev) => ({ ...prev }));
       setNewData({ name: "" });
@@ -170,7 +161,7 @@ function Genders() {
         for (const field in errorDetails) {
           backendErrors[field] = errorDetails[field].join("\n");
         }
-        handleError(errorMessage);
+        showSnack(errorMessage, "error");
         setFieldErrors(backendErrors);
         return;
       }
@@ -180,7 +171,7 @@ function Genders() {
         return;
       }
       if (status === 400) {
-        handleError(errorMessage);
+        showSnack(errorMessage, "error");
       }
       if (error instanceof yup.ValidationError) {
         const errors = {};
@@ -203,7 +194,7 @@ function Genders() {
       const resp = await editGender(row);
       const result = resp.data;
 
-      handleSuccess(result.message);
+      showSnack(result.message, "success");
 
       setPaginationModel((prev) => ({ ...prev }));
       setDialogOpen(false);
@@ -222,7 +213,7 @@ function Genders() {
         for (const field in errorDetails) {
           backendErrors[field] = errorDetails[field].join("\n");
         }
-        handleError(errorMessage);
+        showSnack(errorMessage, "error");
         setFieldErrors(backendErrors);
         return;
       }
@@ -248,7 +239,7 @@ function Genders() {
       const resp = await deleteGender(row);
       const result = resp.data;
 
-      handleSuccess(result.message);
+      showSnack(result.message, "success");
 
       setPaginationModel((prev) => ({ ...prev }));
       setDialogOpen(false);
@@ -281,13 +272,14 @@ function Genders() {
   };
 
   const columns = [
-    { field: "id", headerName: "Sr#", width: 150 },
-    { field: "name", headerName: "Gender", width: 300 },
+    { field: "id", headerName: "Sr#", flex: 1, filterable: false },
+    { field: "name", headerName: "Gender", flex: 1 },
 
     {
       field: "action",
       headerName: "Action",
-      width: 300,
+      flex: 1,
+      filterable: false,
       renderCell: (params) => (
         <Button
           sx={{ backgroundColor: "#6e39cb", textAlign: "center" }}
@@ -304,151 +296,130 @@ function Genders() {
   ];
 
   return (
-    <Paper
-      sx={{
-        pb: 1,
-        m: 4,
-      }}
+    <Container
+      sx={{ backgroundColor: "#f4f5f9", minHeight: "100vh", padding: 0 }}
     >
-      <Box
+      <Typography variant="h4" sx={{ color: "#6e39cb", py: 2 }}>
+        Gender
+      </Typography>
+      <Paper
+        elevation={4}
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          p: 3,
+          p: 2,
         }}
       >
-        <Typography variant="h5" sx={{ color: "#6e39cb" }}>
-          Gender Data
-        </Typography>
-        <Button
-          onClick={() => setDialog2Open(true)}
-          sx={{ backgroundColor: "#6e39cb", color: "#fff" }}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            py: 3,
+          }}
         >
-          + ADD NEW GENDER
-        </Button>
-      </Box>
-
-      <DataGrid
-        slots={{ toolbar: GridToolbar }}
-        columns={columns}
-        rows={rows}
-        loading={loading}
-        rowCount={rowCount}
-        pagination
-        paginationMode="server"
-        sortingMode="server"
-        filterMode="server"
-        pageSizeOptions={[3, 5, 10]}
-        paginationModel={paginationModel}
-        onPaginationModelChange={setPaginationModel}
-        onSortModelChange={setSortModel}
-        onFilterModelChange={setFilterModel}
-      />
-
-      <Dialog open={dialogOpen} onClose={handleDialogClose}>
-        <DialogTitle component={"h4"}>Update Record</DialogTitle>
-        <DialogContent>
-          {selectedRow ? (
-            <div>
-              <FormControl>
-                <FormLabel>Name *</FormLabel>
-                <TextField
-                  sx={{ minWidth: 500, mb: 3 }}
-                  defaultValue={selectedRow.name || ""}
-                  onChange={(e) =>
-                    setSelectedRow((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  error={!!fieldErrors.name}
-                  helperText={fieldErrors.name}
-                />
-              </FormControl>
-            </div>
-          ) : (
-            <Input>No data selected</Input>
-          )}
-        </DialogContent>
-
-        <DialogActions
-          sx={{ display: "flex", justifyContent: "space-between" }}
-        >
+          <Typography variant="h5" sx={{ color: "#6e39cb" }}>
+            Gender Data
+          </Typography>
           <Button
-            onClick={() => handleDelete(selectedRow)}
-            color="error"
-            startIcon={<Delete />}
+            onClick={() => setDialog2Open(true)}
+            sx={{ backgroundColor: "#6e39cb", color: "#fff" }}
           >
-            Delete
+            + ADD NEW GENDER
           </Button>
-          <Box>
+        </Box>
+
+        <DataGrid
+          slots={{ toolbar: GridToolbar }}
+          columns={columns}
+          rows={rows}
+          loading={loading}
+          rowCount={rowCount}
+          pagination
+          paginationMode="server"
+          sortingMode="server"
+          filterMode="server"
+          pageSizeOptions={[3, 5, 10]}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          onSortModelChange={setSortModel}
+          onFilterModelChange={setFilterModel}
+          sx={{ border: "1px solid #e0e0e0", mt: 1, maxHeight: 380 }}
+        />
+
+        <Dialog open={dialogOpen} onClose={handleDialogClose}>
+          <DialogTitle component={"h4"}>Update Record</DialogTitle>
+          <DialogContent>
+            {selectedRow ? (
+              <div>
+                <FormControl>
+                  <FormLabel>Name *</FormLabel>
+                  <TextField
+                    sx={{ minWidth: 500, mb: 3 }}
+                    defaultValue={selectedRow.name || ""}
+                    onChange={(e) =>
+                      setSelectedRow((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    error={!!fieldErrors.name}
+                    helperText={fieldErrors.name}
+                    variant="standard"
+                  />
+                </FormControl>
+              </div>
+            ) : (
+              <Input>No data selected</Input>
+            )}
+          </DialogContent>
+
+          <DialogActions
+            sx={{ display: "flex", justifyContent: "space-between" }}
+          >
+            <Button
+              onClick={() => handleDelete(selectedRow)}
+              color="error"
+              startIcon={<Delete />}
+            >
+              Delete
+            </Button>
+            <Box>
+              <Button onClick={handleDialogClose} color="primary">
+                Cancel
+              </Button>
+              <Button onClick={() => handleSave(selectedRow)} color="primary">
+                Update
+              </Button>
+            </Box>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={dialog2Open} onClose={handleDialogClose}>
+          <DialogTitle>Add Gender</DialogTitle>
+          <DialogContent>
+            <FormControl>
+              <FormLabel>Name *</FormLabel>
+              <TextField
+                sx={{ minWidth: 500, mb: 3 }}
+                value={newData.name}
+                id="name"
+                error={!!fieldErrors.name}
+                helperText={fieldErrors.name}
+                onChange={handleChange}
+                variant="standard"
+              />
+            </FormControl>
+          </DialogContent>
+          <DialogActions>
             <Button onClick={handleDialogClose} color="primary">
               Cancel
             </Button>
-            <Button onClick={() => handleSave(selectedRow)} color="primary">
-              Update
+            <Button color="primary" onClick={() => handleNewSave(newData)}>
+              Save
             </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={dialog2Open} onClose={handleDialogClose}>
-        <DialogTitle>Add Gender</DialogTitle>
-        <DialogContent>
-          <FormControl>
-            <FormLabel>Name *</FormLabel>
-            <TextField
-              sx={{ minWidth: 500, mb: 3 }}
-              value={newData.name}
-              id="name"
-              error={!!fieldErrors.name}
-              helperText={fieldErrors.name}
-              onChange={handleChange}
-            />
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose} color="primary">
-            Cancel
-          </Button>
-          <Button color="primary" onClick={() => handleNewSave(newData)}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={snackOpen}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        TransitionComponent={SlideTransition}
-        key="slide-transition"
-        autoHideDuration={3000}
-        onClose={() => setSnackOpen(false)}
-      >
-        <Alert
-          severity={severity}
-          variant="filled"
-          sx={{
-            width: "100%",
-            backgroundColor: severity === "success" ? "#f1f1f1" : "#fff",
-            color: severity === "success" ? "#28a745" : "GrayText",
-          }}
-          icon={
-            severity === "success" ? (
-              <span style={{ color: "#28a745" }}>
-                <DoneAll />
-              </span>
-            ) : (
-              <span style={{ color: "#f1c40f" }}>
-                <Warning />
-              </span>
-            )
-          }
-        >
-          {message}
-        </Alert>
-      </Snackbar>
-    </Paper>
+          </DialogActions>
+        </Dialog>
+      </Paper>
+      <SnackbarComp snackbarProps={{ ...snack, handleClose: handleClose }} />
+    </Container>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { Box, Container, styled, List, Collapse } from "@mui/material";
 import Grid from "@mui/material/Grid2";
@@ -42,25 +42,44 @@ function Sidebar({ child }) {
   }
 
   const Items = styled(NavLink)({
-    paddingLeft: 35,
+    padding: 5,
+    paddingLeft: 30,
+    borderRadius: 18,
+    marginBottom: 10,
     textDecoration: "none",
     display: "flex",
     textAlign: "left",
     alignItems: "center",
-    columnGap: 10,
-    marginBottom: 20,
     fontSize: "16px",
     color: "#000",
+    "&:hover": {
+      backgroundColor: "#d3bbfe",
+    },
   });
 
   const P = styled(NavLink)({
     color: "#000",
+    padding: 5,
+    borderRadius: 18,
+    marginBottom: 10,
     textDecoration: "none",
     display: "flex",
     textAlign: "left",
     alignItems: "center",
     columnGap: 10,
-    marginBottom: 20,
+    fontSize: "16px",
+    "&:hover": {
+      backgroundColor: "#d3bbfe",
+    },
+  });
+  const PMain = styled(Link)({
+    color: "#000",
+    textDecoration: "none",
+    display: "flex",
+    textAlign: "left",
+    alignItems: "center",
+    columnGap: 10,
+    marginBottom: 10,
     fontSize: "16px",
   });
   return (
@@ -84,7 +103,7 @@ function Sidebar({ child }) {
             overflowY: "scroll",
           }}
         >
-          <P
+          <PMain
             sx={{
               fontSize: "24px",
               display: "flex",
@@ -93,11 +112,12 @@ function Sidebar({ child }) {
               justifyContent: "center",
               color: "#000",
               py: 3,
-              mb: 3,
+              mb: 1,
             }}
+            onClick={() => navigate("/")}
           >
             Athlete Stats
-          </P>
+          </PMain>
           <Box>
             <P className="navbar-brand" to="/advance">
               <QueryStats /> Advance Search
@@ -109,10 +129,10 @@ function Sidebar({ child }) {
               <CalendarMonthOutlined /> Events
             </P>
             <List component="nav" aria-labelledby="nested-list-subheader">
-              <P onClick={handleClick}>
+              <PMain onClick={handleClick}>
                 <TuneOutlined /> Managment Center
                 {open ? <ExpandLess /> : <ExpandMore />}
-              </P>
+              </PMain>
               <Collapse in={!open} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
                   <Items className="navbar-brand" to="/gender">
@@ -164,8 +184,6 @@ function Sidebar({ child }) {
         size={10}
         sx={{
           height: "100vh",
-          overscrollBehaviorY: "auto",
-          overflowY: "scroll",
         }}
       >
         {child}

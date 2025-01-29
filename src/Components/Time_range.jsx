@@ -3,6 +3,7 @@ import {
   Paper,
   Input,
   Typography,
+  Container,
   Button,
   Dialog,
   DialogTitle,
@@ -11,21 +12,19 @@ import {
   FormControl,
   FormLabel,
   TextField,
-  Snackbar,
-  Slide,
-  Alert,
 } from "@mui/material";
 import * as yup from "yup";
 import { useNavigate } from "react-router-dom";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import React, { useEffect, useState } from "react";
-import { EditNote, Warning, DoneAll, Delete } from "@mui/icons-material";
+import { EditNote, Delete } from "@mui/icons-material";
 import {
   createTimeRange,
   editTimeRange,
   gettimeRanges,
   deleteTask,
 } from "../Services/GetServices";
+import SnackbarComp from "./Snackbar_handler";
 
 function TimeRange() {
   const [rows, setRows] = useState([]);
@@ -39,11 +38,13 @@ function TimeRange() {
   const [filterModel, setFilterModel] = useState({ items: [] });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialog2Open, setDialog2Open] = useState(false);
-  const [snackOpen, setSnackOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [severity, setSeverity] = useState("");
+  const [snack, setSnack] = useState({
+    open: false,
+    message: "",
+    severity: "",
+  });
   const [newData, setNewData] = useState({
     start_time: "",
     end_time: "",
@@ -61,20 +62,11 @@ function TimeRange() {
 
   let navigate = useNavigate();
 
-  function SlideTransition(props) {
-    return <Slide {...props} direction="left" />;
-  }
-
-  const handleSuccess = (message) => {
-    // setLoading(false);
-    setSeverity("success");
-    setMessage(message);
-    setTimeout(() => setSnackOpen(true), 2000);
+  const showSnack = (message, severity) => {
+    setSnack({ open: true, message, severity });
   };
-  const handleError = (message) => {
-    setSeverity("error");
-    setMessage(message);
-    setTimeout(() => setSnackOpen(true), 2000);
+  const handleClose = () => {
+    setSnack((...prev) => ({ ...prev, open: false, severity: "" }));
   };
 
   useEffect(() => {
@@ -103,7 +95,7 @@ function TimeRange() {
         const result = resp.data;
 
         setRowCount(result.data.total);
-        // handleSuccess(result.message);
+        // showSnack(result.message,"success");
         setRows(
           result.data.data.map((item) => ({
             id: item.id,
@@ -114,10 +106,10 @@ function TimeRange() {
         console.log(result.message);
 
         if (resp.status === 101) {
-          handleSuccess(result.message);
+          showSnack(result.message, "success");
         }
         if (resp.status === 200) {
-          //   handleSuccess(result.message);
+          //   showSnack(result.message,"success");
           setLoading(true);
         }
       } catch (error) {
@@ -129,7 +121,7 @@ function TimeRange() {
           alert(errorMessage);
           navigate("/login");
         } else if ([400, 403, 404, 414, 422, 500, 503].includes(status)) {
-          handleError(errorMessage);
+          showSnack(errorMessage, "error");
         } else {
           console.error("Error fetching athletes data:", error);
           alert("An error occurred while fetching data.");
@@ -151,13 +143,13 @@ function TimeRange() {
   const handleNewSave = async (data) => {
     console.log("my data", data);
     try {
-      // await timeRange_validation.validate(newData, { abortEarly: false });
-      // setFieldErrors({});
+      await timeRange_validation.validate(newData, { abortEarly: false });
+      setFieldErrors({});
 
       const resp = await createTimeRange(data);
       const result = resp.data;
 
-      handleSuccess(result.message);
+      showSnack(result.message, "success");
       console.log("create time", result.message);
 
       setPaginationModel((prev) => ({ ...prev }));
@@ -174,7 +166,7 @@ function TimeRange() {
         for (const field in errorDetails) {
           backendErrors[field] = errorDetails[field].join("\n");
         }
-        handleError(errorMessage);
+        showSnack(errorMessage, "error");
         setFieldErrors(backendErrors);
         return;
       }
@@ -183,7 +175,7 @@ function TimeRange() {
         alert(errorMessage);
         return;
       } else if (status === 400) {
-        handleError(errorMessage);
+        showSnack(errorMessage, "error");
       }
       if (error instanceof yup.ValidationError) {
         const errors = {};
@@ -206,7 +198,7 @@ function TimeRange() {
       const resp = await editTimeRange(row);
       const result = resp.data;
 
-      handleSuccess(result.message);
+      showSnack(result.message, "success");
 
       setPaginationModel((prev) => ({ ...prev }));
 
@@ -226,7 +218,7 @@ function TimeRange() {
         for (const field in errorDetails) {
           backendErrors[field] = errorDetails[field].join("\n");
         }
-        handleError(errorMessage);
+        showSnack(errorMessage, "error");
         setFieldErrors(backendErrors);
         return;
       }
@@ -252,7 +244,7 @@ function TimeRange() {
       const resp = await deleteTask(row);
       const result = resp.data;
 
-      handleSuccess(result.message);
+      showSnack(result.message, "success");
 
       setPaginationModel((prev) => ({ ...prev }));
       setDialogOpen(false);
@@ -285,17 +277,18 @@ function TimeRange() {
   };
 
   const columns = [
-    { field: "id", headerName: "Sr#", width: 150 },
-    { field: "start_time", headerName: "Start Time", width: 300 },
+    { field: "id", headerName: "Sr#", flex: 1, filterable: false },
+    { field: "start_time", headerName: "Start Time", flex: 1 },
     {
       field: "end_time",
       headerName: "End Time",
-      width: 300,
+      flex: 1,
     },
     {
       field: "action",
       headerName: "Action",
-      width: 300,
+      filterable: false,
+      flex: 1,
       renderCell: (params) => (
         <Button
           sx={{ backgroundColor: "#6e39cb", textAlign: "center" }}
@@ -312,178 +305,159 @@ function TimeRange() {
   ];
 
   return (
-    <Paper
-      sx={{
-        pb: 1,
-        m: 4,
-      }}
+    <Container
+      sx={{ backgroundColor: "#f4f5f9", minHeight: "100vh", padding: 0 }}
     >
-      <Box
+      <Typography variant="h4" sx={{ color: "#6e39cb", py: 2 }}>
+        Timerange
+      </Typography>
+      <Paper
+        elevation={4}
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          p: 3,
+          p: 2,
         }}
       >
-        <Typography variant="h5" sx={{ color: "#6e39cb" }}>
-          Time Range Data
-        </Typography>
-        <Button
-          onClick={() => setDialog2Open(true)}
-          sx={{ backgroundColor: "#6e39cb", color: "#fff" }}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            py: 3,
+          }}
         >
-          + ADD NEW TIME RANGE
-        </Button>
-      </Box>
-
-      <DataGrid
-        slots={{ toolbar: GridToolbar }}
-        columns={columns}
-        rows={rows}
-        loading={loading}
-        rowCount={rowCount}
-        pagination
-        paginationMode="server"
-        sortingMode="server"
-        filterMode="server"
-        pageSizeOptions={[3, 5, 10]}
-        paginationModel={paginationModel}
-        onPaginationModelChange={setPaginationModel}
-        onSortModelChange={setSortModel}
-        onFilterModelChange={setFilterModel}
-      />
-
-      <Dialog open={dialogOpen} onClose={handleDialogClose}>
-        <DialogTitle component={"h4"}>Update Record</DialogTitle>
-        <DialogContent>
-          {selectedRow ? (
-            <div>
-              <FormControl>
-                <FormLabel>Start_time *</FormLabel>
-                <TextField
-                  sx={{ minWidth: 500, mb: 3 }}
-                  defaultValue={selectedRow.start_time}
-                  onChange={(e) =>
-                    setSelectedRow((prev) => ({
-                      ...prev,
-                      start_time: e.target.value,
-                    }))
-                  }
-                  error={!!fieldErrors.start_time}
-                  helperText={fieldErrors.start_time}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>End_time *</FormLabel>
-                <TextField
-                  sx={{ minWidth: 500, mb: 3 }}
-                  defaultValue={selectedRow.end_time}
-                  onChange={(e) =>
-                    setSelectedRow((prev) => ({
-                      ...prev,
-                      end_time: e.target.value,
-                    }))
-                  }
-                  error={!!fieldErrors.end_time}
-                  helperText={fieldErrors.end_time}
-                />
-              </FormControl>
-            </div>
-          ) : (
-            <Input>No data selected</Input>
-          )}
-        </DialogContent>
-
-        <DialogActions
-          sx={{ display: "flex", justifyContent: "space-between" }}
-        >
+          <Typography variant="h5" sx={{ color: "#6e39cb" }}>
+            Time Range Data
+          </Typography>
           <Button
-            onClick={() => handleDelete(selectedRow)}
-            color="error"
-            startIcon={<Delete />}
+            onClick={() => setDialog2Open(true)}
+            sx={{ backgroundColor: "#6e39cb", color: "#fff" }}
           >
-            Delete
+            + ADD NEW TIME RANGE
           </Button>
+        </Box>
 
-          <Box>
+        <DataGrid
+          slots={{ toolbar: GridToolbar }}
+          columns={columns}
+          rows={rows}
+          loading={loading}
+          rowCount={rowCount}
+          pagination
+          paginationMode="server"
+          sortingMode="server"
+          filterMode="server"
+          pageSizeOptions={[3, 5, 10]}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          onSortModelChange={setSortModel}
+          onFilterModelChange={setFilterModel}
+          sx={{ border: "1px solid #e0e0e0", mt: 1, maxHeight: 380 }}
+        />
+
+        <Dialog open={dialogOpen} onClose={handleDialogClose}>
+          <DialogTitle component={"h4"}>Update Record</DialogTitle>
+          <DialogContent>
+            {selectedRow ? (
+              <div>
+                <FormControl>
+                  <FormLabel>Start_time *</FormLabel>
+                  <TextField
+                    sx={{ minWidth: 500, mb: 3 }}
+                    defaultValue={selectedRow.start_time}
+                    onChange={(e) =>
+                      setSelectedRow((prev) => ({
+                        ...prev,
+                        start_time: e.target.value,
+                      }))
+                    }
+                    error={!!fieldErrors.start_time}
+                    helperText={fieldErrors.start_time}
+                    variant="standard"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>End_time *</FormLabel>
+                  <TextField
+                    sx={{ minWidth: 500, mb: 3 }}
+                    defaultValue={selectedRow.end_time}
+                    onChange={(e) =>
+                      setSelectedRow((prev) => ({
+                        ...prev,
+                        end_time: e.target.value,
+                      }))
+                    }
+                    error={!!fieldErrors.end_time}
+                    helperText={fieldErrors.end_time}
+                    variant="standard"
+                  />
+                </FormControl>
+              </div>
+            ) : (
+              <Input>No data selected</Input>
+            )}
+          </DialogContent>
+
+          <DialogActions
+            sx={{ display: "flex", justifyContent: "space-between" }}
+          >
+            <Button
+              onClick={() => handleDelete(selectedRow)}
+              color="error"
+              startIcon={<Delete />}
+            >
+              Delete
+            </Button>
+
+            <Box>
+              <Button onClick={handleDialogClose} color="primary">
+                Cancel
+              </Button>
+              <Button onClick={() => handleSave(selectedRow)} color="primary">
+                Update
+              </Button>
+            </Box>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={dialog2Open} onClose={handleDialogClose}>
+          <DialogTitle>Add new Time Range</DialogTitle>
+          <DialogContent>
+            <FormControl>
+              <FormLabel>Start_time *</FormLabel>
+              <TextField
+                sx={{ minWidth: 500, mb: 3 }}
+                value={newData.start_time}
+                id="start_time"
+                error={!!fieldErrors.start_time}
+                helperText={fieldErrors.start_time}
+                onChange={handleChange}
+                variant="standard"
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel>End_time *</FormLabel>
+              <TextField
+                sx={{ minWidth: 500, mb: 3 }}
+                value={newData.end_time}
+                id="end_time"
+                error={!!fieldErrors.end_time}
+                helperText={fieldErrors.end_time}
+                onChange={handleChange}
+                variant="standard"
+              />
+            </FormControl>
+          </DialogContent>
+          <DialogActions>
             <Button onClick={handleDialogClose} color="primary">
               Cancel
             </Button>
-            <Button onClick={() => handleSave(selectedRow)} color="primary">
-              Update
+            <Button color="primary" onClick={() => handleNewSave(newData)}>
+              Save
             </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={dialog2Open} onClose={handleDialogClose}>
-        <DialogTitle>Add new Time Range</DialogTitle>
-        <DialogContent>
-          <FormControl>
-            <FormLabel>Start_time *</FormLabel>
-            <TextField
-              sx={{ minWidth: 500, mb: 3 }}
-              value={newData.start_time}
-              id="start_time"
-              error={!!fieldErrors.start_time}
-              helperText={fieldErrors.start_time}
-              onChange={handleChange}
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel>End_time *</FormLabel>
-            <TextField
-              sx={{ minWidth: 500, mb: 3 }}
-              value={newData.end_time}
-              id="end_time"
-              error={!!fieldErrors.end_time}
-              helperText={fieldErrors.end_time}
-              onChange={handleChange}
-            />
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose} color="primary">
-            Cancel
-          </Button>
-          <Button color="primary" onClick={() => handleNewSave(newData)}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={snackOpen}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        TransitionComponent={SlideTransition}
-        key="slide-transition"
-        autoHideDuration={3000}
-        onClose={() => setSnackOpen(false)}
-      >
-        <Alert
-          severity={severity}
-          variant="filled"
-          sx={{
-            width: "100%",
-            backgroundColor: severity === "success" ? "#f1f1f1" : "#fff",
-            color: severity === "success" ? "#28a745" : "GrayText",
-          }}
-          icon={
-            severity === "success" ? (
-              <span style={{ color: "#28a745" }}>
-                <DoneAll />
-              </span>
-            ) : (
-              <span style={{ color: "#f1c40f" }}>
-                <Warning />
-              </span>
-            )
-          }
-        >
-          {message}
-        </Alert>
-      </Snackbar>
-    </Paper>
+          </DialogActions>
+        </Dialog>
+      </Paper>
+      <SnackbarComp snackbarProps={{ ...snack, handleClose: handleClose }} />
+    </Container>
   );
 }
 

@@ -1,83 +1,69 @@
-// import React from "react";
-// import Box from '@mui/material/Box';
-// function Home() {
-//   return (
-//     <Box
-//       sx={{
-//         // py: 4,
-//         // display: "flex",
-//         // flexDirection: "column",
-//         // alignItems: "center",
-//         // textAlign: "center",
-//       }}
-//     >
-//       <h1>Home</h1>
-//     </Box>
-//   );
-// }
-
-// export default Home;
-
-import { Box, Paper, Typography, Button } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import React, { useEffect, useState } from "react";
-import { EditNote } from "@mui/icons-material";
-import { getAthletes } from "../Services/GetServices";
+import { useNavigate } from "react-router-dom";
+import {
+  Paper,
+  Card,
+  Box,
+  Typography,
+  CardContent,
+  Button,
+  Container,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import {
+  DirectionsRun,
+  CalendarMonthOutlined,
+  ScoreboardOutlined,
+  SportsScoreOutlined,
+} from "@mui/icons-material";
+import {
+  getAthletes,
+  getResults,
+  getCompetitions,
+  getAllEvents,
+} from "../Services/GetServices";
 
-function Athletes() {
-  const [rows, setRows] = useState([]);
-  const [paginationModel, setPaginationModel] = useState({
-    page: 0,
-    pageSize: 5,
-  });
+const StyledBox = styled(Box)({
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
+  p: 3,
+});
+const StyledCard = styled(Card)({
+  minWidth: 250,
+  textAlign: "center",
+  borderRadius: "8px",
+});
+const StyledCardContent = styled(CardContent)({
+  display: "flex",
+  justifyContent: "space-between",
+  textAlign: "center",
+  alignItems: "center",
+});
+const StyledButton = styled(Button)({
+  backgroundColor: "none",
+  width: "90%",
+  color: "#6e39cb",
+  border: "1px solid #DBDCDE",
+  borderRadius: "8px",
+  boxShadow: "0px 0px 4px 1px rgba(0, 0, 0, 0.25)",
+});
 
-  const [rowCount, setRowCount] = useState(0);
-  const [sortModel, setSortModel] = useState([]);
-  const [filterModel, setFilterModel] = useState({ items: [] });
-  const [loading, setLoading] = useState(false);
-
+function Home() {
+  const [totalAthletes, setTotalAthletes] = useState(0);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [totalResults, setTotalResults] = useState(0);
+  const [totalCompetitions, setTotalCompetitions] = useState(0);
   let navigate = useNavigate();
 
   useEffect(() => {
-    const athleteData = async () => {
+    const fetchCount = async () => {
       try {
-        const payloads = new URLSearchParams({
-          page: paginationModel.page + 1,
-          page_size: paginationModel.pageSize,
-        });
-
-        filterModel.items.forEach((filter, index) => {
-          if (filter.field && filter.operator && filter.value) {
-            payloads.append(`filter[${index}][field]`, filter.field);
-            payloads.append(`filter[${index}][operator]`, filter.operator);
-            payloads.append(`filter[${index}][value]`, filter.value);
-          }
-        });
-
-        sortModel.forEach((sort, index) => {
-          if (sort.field && sort.sort) {
-            payloads.append(`sort[${index}][field]`, sort.field);
-            payloads.append(`sort[${index}][sort]`, sort.sort);
-          }
-        });
-
-        const resp = await getAthletes(payloads.toString());
-        const result = resp.data;
-
-        setRowCount(result.data.total);
-        setRows(
-          result.data.data.map((item) => ({
-            id: item.id,
-            name: item.name,
-            gender: item.gender.name,
-            gender_id: item.gender.id,
-          }))
-        );
-
-        if (resp.status === 200) {
-          alert(result.message);
-        }
+        const resp = await getAthletes();
+        const result = resp?.data?.data;
+        setTotalAthletes(result.total);
       } catch (error) {
         const status = error.response?.status;
         const errorMessage = error.response?.data?.message;
@@ -89,81 +75,196 @@ function Athletes() {
         } else if ([400, 403, 404, 414, 422, 500, 503].includes(status)) {
           alert(errorMessage);
         } else {
-          console.error("Error fetching athletes data:", error);
+          console.error("Error fetching data:", error);
           alert("An error occurred while fetching data.");
         }
-      } finally {
-        setLoading(false);
       }
     };
 
-    athleteData();
-  }, [paginationModel, sortModel, filterModel, navigate]);
+    fetchCount();
+  }, [navigate]);
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const resp = await getResults();
+        const result = resp?.data?.data;
+        setTotalResults(result.total);
+      } catch (error) {
+        const status = error.response?.status;
+        const errorMessage = error.response?.data?.message;
+        // const errorDetails = error.response?.data?.errors;
 
-  const columns = [
-    { field: "id", headerName: "Sr#", width: 150 },
-    { field: "name", headerName: "Athlete Name", width: 300 },
-    {
-      field: "gender",
-      headerName: "Gender",
-      width: 300,
-    },
-    {
-      field: "action",
-      headerName: "Action",
-      width: 300,
-      renderCell: (params) => (
-        <Button
-          sx={{ backgroundColor: "#6e39cb", textAlign: "center" }}
-          variant="contained"
-        >
-          <EditNote />
-        </Button>
-      ),
-    },
-  ];
+        if (status === 401 || status === 405) {
+          alert(errorMessage);
+          navigate("/login");
+        } else if ([400, 403, 404, 414, 422, 500, 503].includes(status)) {
+          alert(errorMessage);
+        } else {
+          console.error("Error fetching data:", error);
+          alert("An error occurred while fetching data.");
+        }
+      }
+    };
+
+    fetchCount();
+  }, [navigate]);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const resp = await getCompetitions();
+        const result = resp?.data?.data;
+        setTotalCompetitions(result.total);
+      } catch (error) {
+        const status = error.response?.status;
+        const errorMessage = error.response?.data?.message;
+        // const errorDetails = error.response?.data?.errors;
+
+        if (status === 401 || status === 405) {
+          alert(errorMessage);
+          navigate("/login");
+        } else if ([400, 403, 404, 414, 422, 500, 503].includes(status)) {
+          alert(errorMessage);
+        } else {
+          console.error("Error fetching data:", error);
+          alert("An error occurred while fetching data.");
+        }
+      }
+    };
+
+    fetchCount();
+  }, [navigate]);
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const resp = await getAllEvents();
+        const result = resp?.data?.data;
+        setTotalEvents(result.total);
+      } catch (error) {
+        const status = error.response?.status;
+        const errorMessage = error.response?.data?.message;
+        // const errorDetails = error.response?.data?.errors;
+
+        if (status === 401 || status === 405) {
+          alert(errorMessage);
+          navigate("/login");
+        } else if ([400, 403, 404, 414, 422, 500, 503].includes(status)) {
+          alert(errorMessage);
+        } else {
+          console.error("Error fetching data:", error);
+          alert("An error occurred while fetching data.");
+        }
+      }
+    };
+
+    fetchCount();
+  }, [navigate]);
 
   return (
-    <Paper
-      sx={{
-        pb: 1,
-        m: 4,
-      }}
+    <Container
+      sx={{ backgroundColor: "#f4f5f9", minHeight: "100vh", padding: 0 }}
     >
-      <Box
+      <Typography variant="h4" sx={{ color: "#6e39cb", py: 2 }}>
+        Home
+      </Typography>
+      <Paper
+        elevation={4}
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          p: 3,
+          p: 2,
         }}
       >
-        <Typography variant="h5" sx={{ color: "#6e39cb" }}>
-          Athlete Data
-        </Typography>
-        <Button sx={{ backgroundColor: "#6e39cb", color: "#fff" }}>
-          + ADD NEW ATHLETE
-        </Button>
-      </Box>
+        <StyledBox>
+          <Typography variant="h5" sx={{ color: "#6e39cb", pb: 2 }}>
+            Statistics
+          </Typography>
+        </StyledBox>
+        <StyledBox>
+          <StyledCard elevation={4}>
+            <StyledCardContent>
+              <Typography sx={{ fontSize: "20px" }}>Toatal Athelets</Typography>
+              <DirectionsRun />
+            </StyledCardContent>
+            <CardContent>
+              <Typography
+                variant="h6"
+                sx={{ fontSize: "50px", color: "#6e39cb" }}
+              >
+                {totalAthletes}
+              </Typography>
+            </CardContent>
 
-      <DataGrid
-        slots={{ toolbar: GridToolbar }}
-        columns={columns}
-        rows={rows}
-        loading={loading}
-        rowCount={rowCount}
-        pagination
-        paginationMode="server"
-        sortingMode="server"
-        filterMode="server"
-        pageSizeOptions={[3, 5, 10]}
-        paginationModel={paginationModel}
-        onPaginationModelChange={setPaginationModel}
-        onSortModelChange={setSortModel}
-        onFilterModelChange={setFilterModel}
-      />
-    </Paper>
+            <CardContent>
+              <StyledButton elevation={3} size="large" href="athletes">
+                DETAILS
+              </StyledButton>
+            </CardContent>
+          </StyledCard>
+          <StyledCard elevation={4}>
+            <StyledCardContent>
+              <Typography sx={{ fontSize: "20px" }}>Toatal Events</Typography>
+              <CalendarMonthOutlined />
+            </StyledCardContent>
+            <CardContent>
+              <Typography
+                variant="h6"
+                sx={{ fontSize: "50px", color: "#6e39cb" }}
+              >
+                {totalEvents}
+              </Typography>
+            </CardContent>
+
+            <CardContent>
+              <StyledButton elevation={3} size="large" href="events">
+                DETAILS
+              </StyledButton>
+            </CardContent>
+          </StyledCard>
+          <StyledCard elevation={4}>
+            <StyledCardContent>
+              <Typography sx={{ fontSize: "20px" }}>Result Data</Typography>
+              <ScoreboardOutlined />
+            </StyledCardContent>
+            <CardContent>
+              <Typography
+                variant="h6"
+                sx={{ fontSize: "50px", color: "#6e39cb" }}
+              >
+                {totalResults}
+              </Typography>
+            </CardContent>
+
+            <CardContent>
+              <StyledButton elevation={3} size="large" href="results">
+                DETAILS
+              </StyledButton>
+            </CardContent>
+          </StyledCard>
+          <StyledCard elevation={4}>
+            <StyledCardContent>
+              <Typography sx={{ fontSize: "20px" }}>
+                Competition Data
+              </Typography>
+              <SportsScoreOutlined />
+            </StyledCardContent>
+            <CardContent>
+              <Typography
+                variant="h6"
+                sx={{ fontSize: "50px", color: "#6e39cb" }}
+              >
+                {totalCompetitions}
+              </Typography>
+            </CardContent>
+
+            <CardContent>
+              <StyledButton elevation={3} size="large" href="competition">
+                DETAILS
+              </StyledButton>
+            </CardContent>
+          </StyledCard>
+        </StyledBox>
+      </Paper>
+    </Container>
   );
 }
 
-export default Athletes;
+export default Home;

@@ -5,16 +5,18 @@ import { LightModeOutlined, ChevronLeftOutlined } from "@mui/icons-material";
 import { NavLink } from "react-router-dom";
 
 function AdvanceSearch({ child }) {
-  const P = styled(NavLink)({
-    textDecoration: "none",
-    textUnderlineOffset: 5,
-    display: "flex",
-    textAlign: "left",
-    alignItems: "center",
-    fontSize: "14px",
-    color: "#fff",
-  });
-
+  const P = styled(NavLink)`
+    text-decoration: none;
+    text-underline-offset: 5px;
+    display: flex;
+    text-align: left;
+    align-items: center;
+    font-size: 14px;
+    color: #fff;
+    &.active {
+      background-color: #6e39cb;
+    }
+  `;
   return (
     <div>
       <Box

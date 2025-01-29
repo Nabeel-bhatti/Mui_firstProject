@@ -16,15 +16,15 @@ function Athletes() {
   const paginationModel = { page: 0, pageSize: 10 };
 
   const columns = [
-    { field: "id", headerName: "Sr#", width: 80 },
-    { field: "event_name", headerName: "Event Name", width: 130 },
-    { field: "gender", headerName: "Gender", width: 130 },
-    { field: "year", headerName: "Year", width: 100 },
-    { field: "competition_name", headerName: "Competition", width: 130 },
-    { field: "timeRange", headerName: "Time Range", width: 100 },
-    { field: "win_score", headerName: "Win Score", width: 100 },
-    { field: "avg_score", headerName: "Avg Score", width: 100 },
-    { field: "tasks", headerName: "Tasks", width: 100 },
+    { field: "id", headerName: "Sr#", flex: 1 },
+    { field: "event_name", headerName: "Event Name", flex: 1 },
+    { field: "gender", headerName: "Gender", flex: 1 },
+    { field: "year", headerName: "Year", flex: 1 },
+    { field: "competition_name", headerName: "Competition", flex: 1 },
+    { field: "timeRange", headerName: "Time Range", flex: 1 },
+    { field: "win_score", headerName: "Win Score", flex: 1 },
+    { field: "avg_score", headerName: "Avg Score", flex: 1 },
+    { field: "tasks", headerName: "Tasks", flex: 1 },
   ];
 
   useEffect(() => {
@@ -85,7 +85,6 @@ function Athletes() {
         win_score: item.win_score,
         avg_score: item.avg_score,
         tasks: item.tasks,
-        
       }));
 
       setAthleteData(formattedData);
@@ -105,7 +104,9 @@ function Athletes() {
             p: 3,
           }}
         >
-          <Typography variant="h5" sx={{color:"#6e39cb"}}>Event Data</Typography>
+          <Typography variant="h5" sx={{ color: "#6e39cb" }}>
+            Event Data
+          </Typography>
           <Stack>
             <Autocomplete
               sx={{ minWidth: 200 }}
