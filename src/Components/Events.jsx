@@ -347,7 +347,7 @@ function Events() {
         ...prev,
         time_range_id: selectedTime_range ? selectedTime_range.id : null,
         time_range: selectedTime_range
-          ? `${selectedTime_range.start_time} - ${selectedTime_range.end_time}`
+          ? `${selectedTime_range.start_time}-${selectedTime_range.end_time}`
           : null,
       }));
     }
@@ -534,7 +534,7 @@ function Events() {
                   onChange={(e, val) => handleAutocompleteChange(e, val, "new")}
                   options={
                     Array.isArray(timerange)
-                      ? timerange.map((t) => `${t.start_time} - ${t.end_time}`)
+                      ? timerange.map((t) => `${t.start_time}-${t.end_time}`)
                       : []
                   }
                   renderInput={(params) => (
