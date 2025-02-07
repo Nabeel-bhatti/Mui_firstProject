@@ -318,10 +318,9 @@ function Competition() {
     const fetchP_gender = async () => {
       try {
         const resp = await getGenders(g_Debounce);
-        const result = resp.data.data;
-        console.log(result);
-        console.log("Gender", result?.data);
-        setGender(result?.data || []);
+        const result = resp.data;
+        console.log("Gender", result?.data?.data);
+        setGender(result?.data?.data || []);
 
         if (resp.status === 200) {
           showSnack(result.message, "success");

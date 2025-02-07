@@ -166,7 +166,7 @@ function Athletes() {
         setGenders(result?.data?.data || []);
 
         if (resp.status === 200) {
-          showSnack(result.message);
+          showSnack(result.message, "success");
         }
       } catch (error) {
         const status = error.response?.status;

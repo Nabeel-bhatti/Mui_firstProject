@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
-import { Box, Container, styled, List, Collapse } from "@mui/material";
+import {
+  Box,
+  Container,
+  styled,
+  List,
+  Collapse,
+  Typography,
+  useMediaQuery,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import Grid from "@mui/material/Grid2";
 import {
   QueryStats,
@@ -13,6 +22,7 @@ import {
   AccountCircle,
   Logout,
   UploadFile,
+  Person,
 } from "@mui/icons-material";
 
 function Sidebar({ child }) {
@@ -82,6 +92,10 @@ function Sidebar({ child }) {
     marginBottom: 10,
     fontSize: "16px",
   });
+
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.up("md"));
+
   return (
     <Grid container>
       <Grid
@@ -105,32 +119,37 @@ function Sidebar({ child }) {
         >
           <PMain
             sx={{
-              fontSize: "24px",
               display: "flex",
               textAlign: "center",
               alignItems: "center",
               justifyContent: "center",
               color: "#000",
               py: 3,
-              mb: 1,
+              mb: 0.5,
             }}
             onClick={() => navigate("/")}
           >
-            Athlete Stats
+            {isSmallScreen ? (
+              <Typography sx={{ fontSize: "24px" }}>Athlete Stats</Typography>
+            ) : (
+              <Person sx={{ fontSize: "40px" }} />
+            )}
           </PMain>
           <Box>
             <P className="navbar-brand" to="/advance">
-              <QueryStats /> Advance Search
+              <QueryStats />
+              {isSmallScreen ? "Advance Search" : ""}
             </P>
             <P className="navbar-brand" to="/athletes">
-              <DirectionsRun /> Athletes
+              <DirectionsRun /> {isSmallScreen ? "Athletes" : ""}
             </P>
             <P className="navbar-brand" to="/events">
-              <CalendarMonthOutlined /> Events
+              <CalendarMonthOutlined />
+              {isSmallScreen ? "Events" : ""}
             </P>
             <List component="nav" aria-labelledby="nested-list-subheader">
               <PMain onClick={handleClick}>
-                <TuneOutlined /> Managment Center
+                <TuneOutlined /> {isSmallScreen ? "Managment Center" : ""}
                 {open ? <ExpandLess /> : <ExpandMore />}
               </PMain>
               <Collapse in={!open} timeout="auto" unmountOnExit>
@@ -154,7 +173,7 @@ function Sidebar({ child }) {
               </Collapse>
             </List>
             <P className="navbar-brand" to="/upload">
-              <UploadFile /> Upload CSV
+              <UploadFile /> {isSmallScreen ? "Upload CSV" : ""}
             </P>
           </Box>
         </Container>
@@ -167,14 +186,19 @@ function Sidebar({ child }) {
               backgroundColor: "#6e39cb",
               color: "#fff",
               borderRadius: 2,
-              padding: 1,
               position: "fixed",
               maxWidth: 180,
               bottom: 0,
               left: 15,
             }}
           >
-            <AccountCircle color="#bdbdbd" fontSize="large" /> {user}
+            {isSmallScreen ? (
+              <AccountCircle color="#bdbdbd" fontSize="large" />
+            ) : (
+              ""
+            )}
+
+            {isSmallScreen ? user : ""}
             <Logout />
           </P>
         </Container>

@@ -25,9 +25,10 @@ import {
 
 const StyledBox = styled(Box)({
   display: "flex",
-  justifyContent: "space-between",
+  // justifyContent: "space-between",
+  justifyContent: "center",
   alignItems: "center",
-  gap: 10,
+  gap: 15,
   flexWrap: "wrap",
   p: 3,
 });
@@ -173,11 +174,13 @@ function Home() {
           p: 2,
         }}
       >
-        <StyledBox>
-          <Typography variant="h5" sx={{ color: "#6e39cb", pb: 2 }}>
-            Statistics
-          </Typography>
-        </StyledBox>
+        <Typography
+          variant="h5"
+          sx={{ color: "#6e39cb", pb: 2 }}
+        >
+          Statistics
+        </Typography>
+
         <StyledBox>
           <StyledCard elevation={4}>
             <StyledCardContent>
